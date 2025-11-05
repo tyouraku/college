@@ -1,0 +1,56 @@
+%% HW1_2原始代码
+fs = 8000;
+beattime = 0.5;
+
+freq = [523.25, 523.25, 587.33, 392, 349.23, 349.23, 293.66, 392];
+beatnum = [1, 0.5, 0.5, 2, 1, 0.5, 0.5, 2];
+rhythm = [];
+
+for i = 1 : length(beatnum)
+    t = beatnum(i) * beattime; % 音符持续时间  
+    t = linspace(0, t, t * fs); % 采样点
+    rhythm = [rhythm, sin(2 * pi * freq(i) * t) .* envel(t,3)]; % 乘包络
+end
+
+% sound(rhythm, fs)
+% plot(t,sin(2 * pi * freq(i) * t) .* envel(t,3)); % 若想绘制包络作用后的音频图像，则运行该行代码
+
+%% 用简单方法将旋律进行八度变化
+% sound(rhythm, 2*fs); % 频率变为2倍，升高八度
+% audiowrite('1_3_1.wav', rhythm, 2*fs);
+% sound(rhythm, fs/2); % 频率变为1/2倍，降低八度
+% audiowrite('1_3_2.wav', rhythm, fs/2);
+
+%% 用resample函数将旋律升高半个音阶
+[p, q] = rat(2^(1/12)); % 找到最接近的有理分数近似 [p, q]
+rhythm1 = resample(rhythm, p, q);
+sound(rhythm1, fs);
+audiowrite('1_3_3.wav', rhythm1, fs);
+
+%% 包络线函数定义
+function env = envel(t,n)
+    switch n
+    case 1 % 分段折线式的原始ADSR包络
+        env = zeros(1, length(t));
+        env(1:0.2*end) = t(1:0.2*end); % Attack：20%时长
+        env(1:0.2*end) = env(1:0.2*end)/env(0.2*end); % 归一化
+        env(0.2*end+1:0.3*end) = -0.5*t(0.2*end+1:0.3*end) + 0.3; % Decay：10%时长
+        env(0.2*end+1:0.3*end) = env(0.2*end+1:0.3*end)/env(0.2*end + 1); % 归一化
+        env(0.3*end+1:0.65*end) = env(0.3*end); % Sustain：35%时长
+        env(0.65*end+1:end) = t(0.65*end+1:end); % Release：35%时长
+        env(0.65*end+1:end) = (env(0.65*end+1:end)-env(end))/(env(0.65*end+1)-env(end))* env(0.3*end); % 归一化
+    case 2 % 指数函数
+        env = zeros(1, length(t));
+        env(1:end) = exp(-10*t(1:end));
+    case 3 % 每一段是指数函数形式的ADSR包络
+        env = zeros(1, length(t));
+        env(1:0.2*end) = 1./exp(-t(1:0.2*end)) - 1; % Attack：20%时长
+        env(1:0.2*end) = env(1:0.2*end)/env(0.2*end); % 归一化
+        env(0.2*end+1:0.3*end) = exp(-10*t(0.2*end+1:0.3*end)) + 0.15; % Decay：10%时长
+        env(0.2*end+1:0.3*end) = env(0.2*end+1:0.3*end)/env(0.2*end + 1); % 归一化
+        env(0.3*end+1:0.65*end) = env(0.3*end); %Sustain：35%时长
+        env(0.65*end+1:end) = exp(-6*t(0.65*end+1:end)); % Release：35%时长
+        env(0.65*end+1:end) = (env(0.65*end+1:end)-env(end))/(env(0.65*end+1)-env(end))* env(0.3*end); % 归一化
+    end
+    % plot(t,env); % 若想绘制包络图像，则运行该行代码
+end

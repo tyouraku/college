@@ -1,0 +1,48 @@
+fs = 8000;
+beattime = 0.5;
+
+freq = [523.25, 523.25, 587.33, 392, 349.23, 349.23, 293.66, 392];
+beatnum = [1, 0.5, 0.5, 2, 1, 0.5, 0.5, 2];
+rhythm = [];
+
+for i = 1 : length(beatnum)
+    t = beatnum(i) * beattime; % 音符持续时间  
+    t = linspace(0, t, t * fs); % 采样点
+    env = envel(t,3);
+    temp = sin(2 * pi * freq(i) * t) + 0.2 * sin(4 * pi * freq(i) * t) + 0.3 * sin(6 * pi * freq(i) * t);
+    temp = temp .* env;
+    rhythm = [rhythm, temp];
+end
+rhythm = rhythm / max(abs(rhythm)); % 归一化防止削波
+
+sound(rhythm, fs)
+audiowrite('1_4.wav', rhythm, fs);
+% plot(t,sin(2 * pi * freq(i) * t) .* envel(t,3)); % 若想绘制包络作用后的音频图像，则运行该行代码
+
+%% 包络线函数定义
+function env = envel(t,n)
+    switch n
+    case 1 % 分段折线式的原始ADSR包络
+        env = zeros(1, length(t));
+        env(1:0.2*end) = t(1:0.2*end); % Attack：20%时长
+        env(1:0.2*end) = env(1:0.2*end)/env(0.2*end); % 归一化
+        env(0.2*end+1:0.3*end) = -0.5*t(0.2*end+1:0.3*end) + 0.3; % Decay：10%时长
+        env(0.2*end+1:0.3*end) = env(0.2*end+1:0.3*end)/env(0.2*end + 1); % 归一化
+        env(0.3*end+1:0.65*end) = env(0.3*end); %Sustain：35%时长
+        env(0.65*end+1:end) = t(0.65*end+1:end); % Release：35%时长
+        env(0.65*end+1:end) = (env(0.65*end+1:end)-env(end))/(env(0.65*end+1)-env(end))* env(0.3*end); % 归一化
+    case 2 % 指数函数
+        env = zeros(1, length(t));
+        env(1:end) = exp(-10*t(1:end));
+    case 3 % 每一段是指数函数形式的ADSR包络
+        env = zeros(1, length(t));
+        env(1:0.2*end) = 1./exp(-t(1:0.2*end)) - 1; % Attack：20%时长
+        env(1:0.2*end) = env(1:0.2*end)/env(0.2*end); % 归一化
+        env(0.2*end+1:0.3*end) = exp(-10*t(0.2*end+1:0.3*end)) + 0.15; % Decay：10%时长
+        env(0.2*end+1:0.3*end) = env(0.2*end+1:0.3*end)/env(0.2*end + 1); % 归一化
+        env(0.3*end+1:0.65*end) = env(0.3*end); % Sustain：35%时长
+        env(0.65*end+1:end) = exp(-6*t(0.65*end+1:end)); % Release：35%时长
+        env(0.65*end+1:end) = (env(0.65*end+1:end)-env(end))/(env(0.65*end+1)-env(end))* env(0.3*end); % 归一化
+    end
+    % plot(t,env); % 若想绘制包络图像，则运行该行代码
+end
